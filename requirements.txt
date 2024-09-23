@@ -1,0 +1,8 @@
+CMake==3.25.2
+dlib==19.24.2
+numpy
+Pillow
+face_recognition
+
+#optional: python version is 3.12 over
+#pip install setuptools
