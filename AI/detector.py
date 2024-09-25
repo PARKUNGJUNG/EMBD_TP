@@ -61,9 +61,6 @@ def encode_known_faces(
         pickle.dump(name_encodings, f)
 
 
-encode_known_faces()
-
-
 def recognize_faces(
     image_location: str,
     model: str = "hog",
@@ -90,7 +87,6 @@ def recognize_faces(
         name = _recognize_face(unknown_encoding, loaded_encodings)
         if not name:
             name = "Unknown"    
-        # Removed print(name, bounding_box)
         _display_face(draw, bounding_box, name)
 
     del draw
@@ -137,11 +133,6 @@ def validate(model: str = "hog"):
                 image_location=str(filepath.absolute()), model=model
             )
 
-# Removed encode_known_faces()
-
-validate()
-
-# Removed call to validate()
 
 if __name__ == "__main__":
     if args.train:
