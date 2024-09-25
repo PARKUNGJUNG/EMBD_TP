@@ -3,6 +3,7 @@ dlib==19.24.2
 numpy
 Pillow
 face_recognition
+pyqt5
 
 #optional: python version is 3.12 over
 #pip install setuptools

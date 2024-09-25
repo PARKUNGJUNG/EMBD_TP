@@ -7,4 +7,4 @@
 20212434 백종혁
 
 ## 필수요소 설치
-(venv) $ python -m pip3 install -r requirements.txt
+(venv) $ python -m pip install -r requirements.txt
