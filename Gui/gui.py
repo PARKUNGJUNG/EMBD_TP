@@ -23,51 +23,81 @@ class FaceRecognitionApp(QMainWindow):
         self.label = QLabel(self)
         self.label.setGeometry(50, 50, 700, 400)
 
-        self.btn = QPushButton('Open Image', self)
-        self.btn.setGeometry(350, 500, 100, 30)
-        self.btn.clicked.connect(self.open_image)
+        self.btnLoad = QPushButton('Load Image', self)
+        self.btnLoad.setGeometry(50, 500, 100, 30)
+        self.btnLoad.clicked.connect(self.loadImage)
 
-    def open_image(self):
+        self.btnRecognize = QPushButton('Recognize Faces', self)
+        self.btnRecognize.setGeometry(200, 500, 150, 30)
+        self.btnRecognize.clicked.connect(self.recognizeFaces)
+
+    def loadImage(self):
         options = QFileDialog.Options()
-        fileName, _ = QFileDialog.getOpenFileName(self, "Open Image File", "", "Images (*.png *.xpm *.jpg)", options=options)
+        fileName, _ = QFileDialog.getOpenFileName(self, "QFileDialog.getOpenFileName()", "", "All Files (*);;JPEG (*.jpg *.jpeg);;PNG (*.png)", options=options)
         if fileName:
-            self.recognize_faces(fileName)
+            self.imagePath = fileName
+            pixmap = QPixmap(fileName)
+            self.label.setPixmap(pixmap)
 
-    def recognize_faces(self, image_location):
-        with DEFAULT_ENCODINGS_PATH.open(mode="rb") as f:
-            loaded_encodings = pickle.load(f)
+    def recognizeFaces(self):
+        if hasattr(self, 'imagePath'):
+            recognize_faces(self.imagePath)
+        else:
+            print("No image loaded")
 
-        input_image = face_recognition.load_image_file(image_location)
-        input_face_locations = face_recognition.face_locations(input_image, model="hog")
-        input_face_encodings = face_recognition.face_encodings(input_image, input_face_locations)
+def encode_known_faces(model: str = "hog", encodings_location: Path = DEFAULT_ENCODINGS_PATH) -> None:
+    names = []
+    encodings = []
 
-        pillow_image = Image.fromarray(input_image)
-        draw = ImageDraw.Draw(pillow_image)
+    for filepath in Path("training").glob("*/*"):
+        name = filepath.parent.name
+        image = face_recognition.load_image_file(filepath)
 
-        for bounding_box, unknown_encoding in zip(input_face_locations, input_face_encodings):
-            name = self._recognize_face(unknown_encoding, loaded_encodings)
-            if not name:
-                name = "Unknown"
-            self._display_face(draw, bounding_box, name)
+        face_locations = face_recognition.face_locations(image, model=model)
+        face_encodings = face_recognition.face_encodings(image, face_locations)
 
-        del draw
-        pillow_image.save("recognized.jpg")
-        self.label.setPixmap(QPixmap("recognized.jpg"))
+        for encoding in face_encodings:
+            names.append(name)
+            encodings.append(encoding)
 
-    def _recognize_face(self, unknown_encoding, loaded_encodings):
-        boolean_matches = face_recognition.compare_faces(loaded_encodings["encodings"], unknown_encoding)
-        votes = Counter(name for match, name in zip(boolean_matches, loaded_encodings["names"]) if match)
-        if votes:
-            return votes.most_common(1)[0][0]
+    name_encodings = {"names": names, "encodings": encodings}
+    with encodings_location.open(mode="wb") as f:
+        pickle.dump(name_encodings, f)
 
-    def _display_face(self, draw, bounding_box, name):
-        top, right, bottom, left = bounding_box
-        draw.rectangle(((left, top), (right, bottom)), outline=BOUNDING_BOX_COLOR)
-        text_left, text_top, text_right, text_bottom = draw.textbbox((left, bottom), name)
-        draw.rectangle(((text_left, text_top), (text_right, text_bottom)), fill="blue", outline="blue")
-        draw.text((text_left, text_top), name, fill="white")
+def recognize_faces(image_location: str, model: str = "hog", encodings_location: Path = DEFAULT_ENCODINGS_PATH) -> None:
+    with encodings_location.open(mode="rb") as f:
+        loaded_encodings = pickle.load(f)
 
-if __name__ == '__main__':
+    input_image = face_recognition.load_image_file(image_location)
+    input_face_locations = face_recognition.face_locations(input_image, model=model)
+    input_face_encodings = face_recognition.face_encodings(input_image, input_face_locations)
+
+    pillow_image = Image.fromarray(input_image)
+    draw = ImageDraw.Draw(pillow_image)
+
+    for bounding_box, unknown_encoding in zip(input_face_locations, input_face_encodings):
+        name = _recognize_face(unknown_encoding, loaded_encodings)
+        if not name:
+            name = "Unknown"
+        _display_face(draw, bounding_box, name)
+
+    del draw
+    pillow_image.show()
+
+def _recognize_face(unknown_encoding, loaded_encodings):
+    boolean_matches = face_recognition.compare_faces(loaded_encodings["encodings"], unknown_encoding)
+    votes = Counter(name for match, name in zip(boolean_matches, loaded_encodings["names"]) if match)
+    if votes:
+        return votes.most_common(1)[0][0]
+
+def _display_face(draw, bounding_box, name):
+    top, right, bottom, left = bounding_box
+    draw.rectangle(((left, top), (right, bottom)), outline=BOUNDING_BOX_COLOR)
+    text_left, text_top, text_right, text_bottom = draw.textbbox((left, bottom), name)
+    draw.rectangle(((text_left, text_top), (text_right, text_bottom)), fill="blue", outline="blue")
+    draw.text((text_left, text_top), name, fill="white")
+
+if __name__ == "__main__":
     app = QApplication(sys.argv)
     ex = FaceRecognitionApp()
     ex.show()
