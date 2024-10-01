@@ -123,9 +123,6 @@ def _display_face(draw, bounding_box, name):
         fill="white",
     )
 
-recognize_faces("unknown.jpg")
-
-
 def validate(model: str = "hog"):
     for filepath in Path("validation").rglob("*"):
         if filepath.is_file():

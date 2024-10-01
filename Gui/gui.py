@@ -5,7 +5,7 @@ from pathlib import Path
 import face_recognition
 import pickle
 from PIL import Image, ImageDraw
-from detector import encode_known_faces, recognize_faces, validate
+from AI.detector import encode_known_faces, recognize_faces, validate
 
 class FaceRecognitionApp(QMainWindow):
     def __init__(self):
