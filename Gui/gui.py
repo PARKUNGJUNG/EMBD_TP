@@ -1,9 +1,9 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from tkinter import ttk  # Progress Bar를 위한 ttk 모듈 사용
-import AI.detector as detector # detector.py를 import하여 기능 사용
 import threading
-import time  # Simulating task progress
+import time
+from AI import detector
 
 
 class FaceRecognitionApp:
