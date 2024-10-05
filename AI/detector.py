@@ -16,6 +16,9 @@ parser.add_argument("--validate", action="store_true", help="Validate trained mo
 parser.add_argument("--test", action="store_true", help="Test the model with an unknown image")
 parser.add_argument("-m", action="store", default="hog", choices=["hog", "cnn"], help="Which model to use for training: hog (CPU), cnn (GPU)")
 parser.add_argument("-f", action="store", help="Path to an image with an unknown face")
+parser.add_argument("--compare", action="store_true", help="Compare faces between two images")
+parser.add_argument("--image1", action="store", help="Path to the first image")
+parser.add_argument("--image2", action="store", help="Path to the second image")
 args = parser.parse_args()
 
 Path("../training").mkdir(exist_ok=True)
@@ -79,6 +82,30 @@ def validate(model: str = "hog"):
     for filepath in Path("../validation").rglob("*"):
         if filepath.is_file():
             recognize_faces(image_location=str(filepath.absolute()), model=model)
+
+
+def compare_faces(image1_path: str, image2_path: str, model: str = "hog",
+                  encodings_location: Path = DEFAULT_ENCODINGS_PATH) -> None:
+    with encodings_location.open(mode="rb") as f:
+        loaded_encodings = pickle.load(f)
+
+    # 첫 번째 이미지 로드 및 인코딩
+    image1 = load_image(image1_path)
+    face_locations1 = face_recognition.face_locations(image1, model=model)
+    face_encodings1 = face_recognition.face_encodings(image1, face_locations1)
+
+    # 두 번째 이미지 로드 및 인코딩
+    image2 = load_image(image2_path)
+    face_locations2 = face_recognition.face_locations(image2, model=model)
+    face_encodings2 = face_recognition.face_encodings(image2, face_locations2)
+
+    # 얼굴 비교
+    for encoding1 in face_encodings1:
+        results = face_recognition.compare_faces(face_encodings2, encoding1)
+        distances = face_recognition.face_distance(face_encodings2, encoding1)
+        print(f"Results: {results}")
+        print(f"Distances: {distances}")
+
 
 if __name__ == "__main__":
     if args.train:

@@ -1,5 +1,5 @@
 # EMBD_TP
-임베디드시스템 학기 프로젝트
+### 임베디드시스템 학기 프로젝트
 
 ## 1331조
 20211106 박정웅\
@@ -10,7 +10,31 @@
 (venv) $ python -m pip install -r requirements.txt
 
 ## 실행방법
-python detector.py --???
+### 파일 구조
+project/\
+│\
+├── training/\
+│   ├── person1/\
+│   │   ├── image1.jpg\
+│   │   ├── image2.jpg\
+│   │   └── ...\
+│   ├── person2/\
+│   │   ├── image1.jpg\
+│   │   ├── image2.jpg\
+│   │   └── ...\
+│   └── ...\
+├── validation/\
+│   ├── image1.jpg\
+│   ├── image2.jpg\
+│   └── ...\
+├── output/\
+│   └── encodings.pkl\
+└── AI/\
+    └── detector.py
+
+
+### CLI
+python AI/detector.py --???
 
 usage: detector.py [-h] [--train] [--validate] [--test] [-m {hog,cnn}] [-f F]
 
