@@ -71,7 +71,7 @@ def _recognize_face(unknown_encoding, loaded_encodings):
     if votes:
         return votes.most_common(1)[0][0]
 
-def _display_face(draw, bounding_box, name):
+def _display_face(draw, bounding_box, name): 
     top, right, bottom, left = bounding_box
     draw.rectangle(((left, top), (right, bottom)), outline=BOUNDING_BOX_COLOR)
     text_left, text_top, text_right, text_bottom = draw.textbbox((left, bottom), name)
@@ -84,7 +84,7 @@ def validate(model: str = "hog"):
             recognize_faces(image_location=str(filepath.absolute()), model=model)
 
 
-def compare_faces(image1_path: str, image2_path: str, model: str = "hog",
+def compare_faces(image1_path: str, image2_path: str, model: str = "hog", # 얼굴 비교 검증 함수
                   encodings_location: Path = DEFAULT_ENCODINGS_PATH) -> None:
     with encodings_location.open(mode="rb") as f:
         loaded_encodings = pickle.load(f)
