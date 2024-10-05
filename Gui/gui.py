@@ -1,122 +1,60 @@
-import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QFileDialog, QMessageBox
-from PyQt5.QtGui import QPixmap
-from pathlib import Path
-import face_recognition
-import pickle
-from PIL import Image, ImageDraw
-from collections import Counter
-from AI.detector import encode_known_faces, recognize_faces, validate
+import tkinter as tk
+from tkinter import filedialog, messagebox
+import AI.detector as detector  # detector.py를 import하여 기능 사용
+import os
 
-DEFAULT_ENCODINGS_PATH = Path("output/encodings.pkl")
 
-class FaceRecognitionApp(QMainWindow):
-    def __init__(self):
-        super().__init__()
-        self.initUI()
+class FaceRecognitionApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Face Recognition App")
 
-    def initUI(self):
-        self.setWindowTitle('Face Recognition App')
-        self.setGeometry(100, 100, 800, 600)
+        # Create the GUI elements
+        self.create_widgets()
 
-        self.label = QLabel(self)
-        self.label.setGeometry(50, 50, 700, 400)
+    def create_widgets(self):
+        # 학습 버튼
+        self.train_button = tk.Button(self.root, text="Train", command=self.train_faces)
+        self.train_button.grid(row=0, column=0, padx=10, pady=10)
 
-        self.btnLoadImage = QPushButton('Load Image', self)
-        self.btnLoadImage.setGeometry(50, 500, 100, 30)
-        self.btnLoadImage.clicked.connect(self.loadImage)
+        # 검증 버튼
+        self.validate_button = tk.Button(self.root, text="Validate", command=self.validate_faces)
+        self.validate_button.grid(row=0, column=1, padx=10, pady=10)
 
-        self.btnRecognize = QPushButton('Recognize Faces', self)
-        self.btnRecognize.setGeometry(200, 500, 150, 30)
-        self.btnRecognize.clicked.connect(self.recognizeFaces)
+        # 테스트 버튼
+        self.test_button = tk.Button(self.root, text="Test", command=self.test_faces)
+        self.test_button.grid(row=1, column=0, padx=10, pady=10)
 
-        self.btnSaveImage = QPushButton('Save Image', self)
-        self.btnSaveImage.setGeometry(400, 500, 100, 30)
-        self.btnSaveImage.clicked.connect(self.saveImage)
+        # 비교 버튼
+        self.compare_button = tk.Button(self.root, text="Compare", command=self.compare_faces)
+        self.compare_button.grid(row=1, column=1, padx=10, pady=10)
 
-        self.btnTrain = QPushButton('Train', self)
-        self.btnTrain.setGeometry(550, 500, 100, 30)
-        self.btnTrain.clicked.connect(self.trainModel)
+    def train_faces(self):
+        """detector.py의 encode_known_faces 함수를 호출"""
+        detector.encode_known_faces(model="hog")
+        messagebox.showinfo("Success", "Face training complete")
 
-        self.btnValidate = QPushButton('Validate', self)
-        self.btnValidate.setGeometry(700, 500, 100, 30)
-        self.btnValidate.clicked.connect(self.validateModel)
+    def validate_faces(self):
+        """detector.py의 validate 함수를 호출"""
+        detector.validate(model="hog")
+        messagebox.showinfo("Success", "Validation complete")
 
-        self.imagePath = None
-        self.recognizedImage = None
+    def test_faces(self):
+        """detector.py의 recognize_faces 함수를 호출하여 테스트"""
+        file_path = filedialog.askopenfilename(title="Select Image for Testing", filetypes=[("Image Files", "*.jpg *.jpeg *.png")])
+        if file_path:
+            detector.recognize_faces(image_location=file_path, model="hog")
 
-    def loadImage(self):
-        options = QFileDialog.Options()
-        fileName, _ = QFileDialog.getOpenFileName(self, "QFileDialog.getOpenFileName()", "", "All Files (*);;JPEG (*.jpg;*.jpeg);;PNG (*.png)", options=options)
-        if fileName:
-            self.imagePath = fileName
-            pixmap = QPixmap(fileName)
-            self.label.setPixmap(pixmap.scaled(self.label.width(), self.label.height()))
-            QMessageBox.information(self, "Image Loaded", "Image loaded successfully!")
+    def compare_faces(self):
+        """detector.py의 compare_faces 함수를 호출하여 두 이미지를 비교"""
+        file_path1 = filedialog.askopenfilename(title="Select First Image", filetypes=[("Image Files", "*.jpg *.jpeg *.png")])
+        file_path2 = filedialog.askopenfilename(title="Select Second Image", filetypes=[("Image Files", "*.jpg *.jpeg *.png")])
 
-    def recognizeFaces(self):
-        if self.imagePath:
-            self.recognizedImage = self.recognize_faces(self.imagePath)
-            pixmap = QPixmap(self.recognizedImage)
-            self.label.setPixmap(pixmap.scaled(self.label.width(), self.label.height()))
-            QMessageBox.information(self, "Recognition Complete", "Faces recognized successfully!")
-        else:
-            QMessageBox.warning(self, "No Image", "No image loaded")
+        if file_path1 and file_path2:
+            detector.compare_faces(image1_path=file_path1, image2_path=file_path2, model="hog")
 
-    def recognize_faces(self, image_location):
-        with open(DEFAULT_ENCODINGS_PATH, "rb") as f:
-            loaded_encodings = pickle.load(f)
 
-        input_image = face_recognition.load_image_file(image_location)
-        input_face_locations = face_recognition.face_locations(input_image, model="hog")
-        input_face_encodings = face_recognition.face_encodings(input_image, input_face_locations)
-
-        pillow_image = Image.fromarray(input_image)
-        draw = ImageDraw.Draw(pillow_image)
-
-        for bounding_box, unknown_encoding in zip(input_face_locations, input_face_encodings):
-            name = self._recognize_face(unknown_encoding, loaded_encodings)
-            if not name:
-                name = "Unknown"
-            self._display_face(draw, bounding_box, name)
-
-        del draw
-        pillow_image.save("recognized_image.png")
-        return "recognized_image.png"
-
-    def _recognize_face(self, unknown_encoding, loaded_encodings):
-        boolean_matches = face_recognition.compare_faces(loaded_encodings["encodings"], unknown_encoding)
-        votes = Counter(name for match, name in zip(boolean_matches, loaded_encodings["names"]) if match)
-        if votes:
-            return votes.most_common(1)[0][0]
-
-    def _display_face(self, draw, bounding_box, name):
-        top, right, bottom, left = bounding_box
-        draw.rectangle(((left, top), (right, bottom)), outline="blue")
-        text_left, text_top, text_right, text_bottom = draw.textbbox((left, bottom), name)
-        draw.rectangle(((text_left, text_top), (text_right, text_bottom)), fill="blue", outline="blue")
-        draw.text((text_left, text_top), name, fill="white")
-
-    def saveImage(self):
-        if self.recognizedImage:
-            options = QFileDialog.Options()
-            fileName, _ = QFileDialog.getSaveFileName(self, "Save Image", "", "PNG (*.png);;JPEG (*.jpg;*.jpeg)", options=options)
-            if fileName:
-                Image.open(self.recognizedImage).save(fileName)
-                QMessageBox.information(self, "Image Saved", "Image saved successfully!")
-        else:
-            QMessageBox.warning(self, "No Image", "No recognized image to save")
-
-    def trainModel(self):
-        encode_known_faces(model="hog")
-        QMessageBox.information(self, "Training Complete", "Model trained successfully!")
-
-    def validateModel(self):
-        validate(model="hog")
-        QMessageBox.information(self, "Validation Complete", "Model validated successfully!")
-
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    ex = FaceRecognitionApp()
-    ex.show()
-    sys.exit(app.exec_())
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = FaceRecognitionApp(root)
+    root.mainloop()
