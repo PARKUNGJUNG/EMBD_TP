@@ -10,7 +10,7 @@ class FaceRecognitionApp:
     def __init__(self, root):
         self.root = root
         self.root.title("Face Recognition App")
-        self.root.geometry("500x300")  # GUI 창의 크기를 조정
+        self.root.geometry("400x300")  # GUI 창의 크기를 조정
 
         # Create the GUI elements
         self.create_widgets()
