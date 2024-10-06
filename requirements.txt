@@ -1,6 +1,6 @@
-CMake
-dlib
-numpy
-Pillow
-face_recognition
+CMake==3.25.2
+dlib==19.24.2
+numpy==1.24.2
+Pillow==9.4.0
+face-recognition==1.3.0
 pyqt5
