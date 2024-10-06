@@ -32,7 +32,7 @@ project/\
 └── AI/\
     └── detector.py
 
-
+## 실행방법
 ### CLI
 python AI/detector.py --???
 
@@ -47,3 +47,6 @@ optional arguments:\
   --test    ==    Test the model with an unknown image\
   -m {hog,cnn} == Which model to use for training: hog (CPU), cnn (GPU)\
   -f F     ==     Path to an image with an unknown face
+
+### GUI
+gui.py 실행
