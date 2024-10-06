@@ -13,8 +13,9 @@
 ### 파일 구조
 project/\
 │\
-├── training/\
-│   ├── person1/\
+├── training/ (학습에 필요한 사진 보관)\
+│   ├── person1/ (학습할 사람의 이름)\
+│   │   ├── 학습시킬 사진들\
 │   │   ├── image1.jpg\
 │   │   ├── image2.jpg\
 │   │   └── ...\
@@ -23,11 +24,11 @@ project/\
 │   │   ├── image2.jpg\
 │   │   └── ...\
 │   └── ...\
-├── validation/\
+├── validation/ (검증할 사진들 순서상관x, CLI에서 경로/이름으로 불러옴)\
 │   ├── image1.jpg\
 │   ├── image2.jpg\
 │   └── ...\
-├── output/\
+├── output/ (학습시킨 데이터를 인코딩해서 보관)\
 │   └── encodings.pkl\
 └── AI/\
     └── detector.py
