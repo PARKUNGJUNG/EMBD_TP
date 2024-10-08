@@ -7,7 +7,7 @@
 20212434 백종혁
 
 ## 필수요소 설치
-python 3.9로 제작\
+python **3.9**로 제작되었으며 다른 버전은 에러를 발생시킬 수 있음\
 c/c++ 컴파일러 ex) Visual Studio **to install dlib**\
 (venv) $ python -m pip install -r requirements.txt
 
@@ -32,6 +32,8 @@ project/\
 │   └── ...\
 ├── output/ (학습시킨 데이터를 인코딩해서 보관)\
 │   └── encodings.pkl\
+├── Gui/\
+│   └── gui.py\
 └── AI/\
     └── detector.py
 
