@@ -84,7 +84,10 @@ class FaceRecognitionApp:
 
     def test_faces(self):
         """detector.py의 recognize_faces 함수를 호출하여 테스트 (비동기 처리)"""
-        file_path = filedialog.askopenfilename(title="Select Image for Testing", filetypes=[("Image Files", "*.jpg *.jpeg *.png")])
+        file_path = filedialog.askopenfilename(title="Select Image for Testing",
+                                               filetypes=[("Image Files",
+                                                           "*.jpg *.jpeg *.png *.bmp *.tiff *.gif *.jfif *.webp *.svg *.ico *.heic *.heif"),
+                                                          ("All Files", "*.*")])
         if file_path:
             self.update_status("Testing started...")
             self.run_in_thread(self._test_faces, file_path)
@@ -97,8 +100,15 @@ class FaceRecognitionApp:
 
     def compare_faces(self):
         """detector.py의 compare_faces 함수를 호출하여 두 이미지를 비교 (비동기 처리)"""
-        file_path1 = filedialog.askopenfilename(title="Select First Image", filetypes=[("Image Files", "*.jpg *.jpeg *.png")])
-        file_path2 = filedialog.askopenfilename(title="Select Second Image", filetypes=[("Image Files", "*.jpg *.jpeg *.png")])
+        file_path1 = filedialog.askopenfilename(title="Select First Image",
+                                                filetypes=[("Image Files",
+                                                            "*.jpg *.jpeg *.png *.bmp *.tiff *.gif *.jfif *.webp *.svg *.ico *.heic *.heif"),
+                                                           ("All Files", "*.*")])
+
+        file_path2 = filedialog.askopenfilename(title="Select Second Image",
+                                                filetypes=[("Image Files",
+                                                            "*.jpg *.jpeg *.png *.bmp *.tiff *.gif *.jfif *.webp *.svg *.ico *.heic *.heif"),
+                                                           ("All Files", "*.*")])
 
         if file_path1 and file_path2:
             self.update_status("Comparison started...")

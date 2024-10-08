@@ -1,10 +1,10 @@
-import face_recognition
 import argparse
 import pickle
 from collections import Counter
 from pathlib import Path
 from PIL import Image, ImageDraw
 import numpy as np
+import face_recognition
 
 DEFAULT_ENCODINGS_PATH = Path("../output/encodings.pkl")
 BOUNDING_BOX_COLOR = "blue"

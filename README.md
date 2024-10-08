@@ -7,6 +7,7 @@
 20212434 백종혁
 
 ## 필수요소 설치
+c/c++ 컴파일러 ex) Visual Studio **to install dlib**\
 (venv) $ python -m pip install -r requirements.txt
 
 ## 실행방법
@@ -50,4 +51,10 @@ optional arguments:\
   -f F     ==     Path to an image with an unknown face
 
 ### GUI
-gui.py 실행
+gui.py 실행\
+
+#### 버튼 설명
+train : training 아래 있는 인물별 폴더의 사진을 기반으로 인물을 학습\
+validate : 동명의 폴더에 포함된 사진들의 인명 표시\
+test : 이미지를 선택하여 학습된 사람의 얼굴인지 확인\
+compare : 두 장의 인물사진을 선택해 동일인물인지 비교, 터미널에 정확도 표시 (0에 가까울수록 동일인물일 확률이 증가)
