@@ -7,6 +7,7 @@
 20212434 백종혁
 
 ## 필수요소 설치
+python 3.9로 제작\
 c/c++ 컴파일러 ex) Visual Studio **to install dlib**\
 (venv) $ python -m pip install -r requirements.txt
 
