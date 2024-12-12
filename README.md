@@ -32,6 +32,13 @@ project/\
 │   └── ...\
 ├── output/ (학습시킨 데이터를 인코딩해서 보관)\
 │   └── encodings.pkl\
+│\
+├──HSKLNS_1\
+│   ├── HSKLNS_ardu\
+│   │   └── ...\
+│   ├── raspitest1.py\
+│   ├── huskylib.py\
+│   └── exampleHL.py\
 ├── Gui/\
 │   └── gui.py\
 └── AI/\
