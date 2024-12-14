@@ -13,7 +13,6 @@ PROJECT_DIR = os.getcwd()  # 현재 작업 디렉토리
 SCREENSHOT_DIR = os.path.join(PROJECT_DIR, "screenshots")  # 스크린샷 저장 폴더 경로
 KNOWN_FACES_DIR = os.path.join(PROJECT_DIR, "known_faces")  # 알려진 얼굴 폴더
 
-BUTTON_PIN = 25  # 버튼 GPIO 핀 번호
 SERVO_PIN = 11  # 서보 모터 GPIO 핀 번호
 
 
@@ -46,7 +45,6 @@ def setup():
 
     # GPIO 핀 초기화
     GPIO.setmode(GPIO.BCM)
-    GPIO.setup(BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)  # 버튼 입력
     GPIO.setup(SERVO_PIN, GPIO.OUT)  # 서보 모터 출력
 
     # 서보 PWM 설정
@@ -123,37 +121,32 @@ def verify_faces(screenshot_path):
 # 메인 로직
 def loop():
     try:
-        print("버튼을 눌러 시작하세요!")
+        print("HuskyLens 실행 중... 얼굴 감지를 기다립니다!")
 
         while True:
-            if GPIO.input(BUTTON_PIN) == GPIO.LOW:  # 버튼 눌림 확인
-                print("버튼 입력 감지 - HuskyLens 검증 시작")
+            # HuskyLens로부터 데이터 요청 (폴링)
+            current_data = husky.requestAll()  # 현재 데이터를 가져옴
+
+            # 학습된 얼굴 또는 아무 얼굴이든 감지 여부 확인
+            if current_data:
+                print("HuskyLens - 얼굴 데이터 감지")
                 lcd.lcd_clear()
                 lcd.lcd_display_string("Processing...", 1)  # 검증 시작 메시지
 
-                # 1차 HuskyLens 검증
-                current_data = husky.requestAll()  # 현재 데이터 요청
-                learned_faces = [obj for obj in current_data if obj.learned]  # 학습된 얼굴 필터링
+                # 스크린샷 저장
+                screenshot_path = capture_screenshot()
 
-                if learned_faces:
-                    print("HuskyLens - 학습된 얼굴 감지됨")
-
-                    # 스크린샷 저장
-                    screenshot_path = capture_screenshot()
-
-                    if screenshot_path:
-                        print("스크린샷 저장 완료 - 2차 검증 시작")
-                        verify_faces(screenshot_path)  # 2차 검증
-                    else:
-                        print("스크린샷 저장 실패 - 동작 중지")
+                if screenshot_path:
+                    print("스크린샷 저장 완료 - 얼굴 검증 중")
+                    verify_faces(screenshot_path)  # 저장된 얼굴로 검증
                 else:
-                    print("HuskyLens - 학습되지 않은 얼굴 감지됨")
-                    lcd.lcd_clear()
-                    lcd.lcd_display_string("Denied", 1)  # LCD에 "Denied" 출력
-                    time.sleep(2)
+                    print("스크린샷 저장 실패 - 동작 중지")
+            else:
+                # 아무 얼굴도 감지되지 않으면 대기
+                lcd.lcd_clear()
+                lcd.lcd_display_string("Waiting...", 1)  # 대기 중 메시지 출력
 
-                # 버튼 릴리스 대기
-                time.sleep(0.5)
+            time.sleep(0.5)  # 반응 속도를 조절하기 위한 짧은 대기
     except KeyboardInterrupt:
         print("프로그램 종료")
         servo.stop()  # PWM 정지
