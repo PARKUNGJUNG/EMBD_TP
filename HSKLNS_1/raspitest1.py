@@ -3,14 +3,12 @@ import time
 import serial
 import RPi.GPIO as GPIO
 from huskylib import HuskyLensLibrary
-from AI.detector import compare_faces, load_image
+from PIL import Image
 
 # 전역 변수
 husky = None  # HuskyLens 객체
-PROJECT_DIR = os.getcwd()  # 현재 작업 디렉토리
-SCREENSHOT_DIR = os.path.join(PROJECT_DIR, "screenshots")  # 스크린샷 저장 폴더 경로
-KNOWN_FACES_DIR = os.path.join(PROJECT_DIR, "known_faces")  # 알려진 얼굴 폴더
-
+HOME_DIR = os.path.expanduser("~")  # 사용자 홈 디렉토리 경로
+SCREENSHOT_DIR = os.path.join(HOME_DIR, "HNUCE", "screenshot")  # 저장 경로
 SERVO_PIN = 11  # 서보 모터 GPIO 핀 번호
 
 
@@ -45,7 +43,7 @@ def setup():
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(SERVO_PIN, GPIO.OUT)  # 서보 모터 출력
 
-    # 서보 PWM 설정
+    # 서보 PWM 설정 (주석 처리 가능)
     global servo
     servo = GPIO.PWM(SERVO_PIN, 50)  # 서보 모터 50Hz PWM
     servo.start(0)
@@ -61,22 +59,24 @@ def rotate_servo(angle):
     servo.ChangeDutyCycle(0)
 
 
-# 스크린샷 캡처 기능
+# 스크린샷 캡처 기능 (HuskyLens 데이터를 Raspberry Pi에 저장)
 def capture_screenshot():
-    global husky
-    screenshot_path = os.path.join(SCREENSHOT_DIR, "screenshot.jpg")
-
     try:
-        husky.saveScreenshotToSDCard()  # SD 카드에 저장
-        time.sleep(2)  # 저장 대기 시간
+        # HuskyLens에서 이미지를 읽어옴
+        image_data = husky.captureImage()  # 이미지를 읽어오는 메서드 활용 (맞는 API 사용)
+        if not image_data:
+            print("Error: HuskyLens에서 이미지 데이터를 가져오는 데 실패했습니다.")
+            return None
 
-        # 파일 이동
-        source_path = "/sdcard/screenshot.jpg"
-        if os.path.exists(source_path):
-            os.rename(source_path, screenshot_path)
-            print(f"스크린샷이 {screenshot_path}에 저장되었습니다.")
-        else:
-            print("SD 카드에서 스크린샷을 찾을 수 없습니다.")
+        # 캡처된 이미지를 저장할 경로 설정
+        screenshot_filename = time.strftime("screenshot_%Y%m%d_%H%M%S.jpg")
+        screenshot_path = os.path.join(SCREENSHOT_DIR, screenshot_filename)
+
+        # 이미지를 저장
+        with open(screenshot_path, "wb") as f:
+            f.write(image_data)
+
+        print(f"스크린샷이 {screenshot_path}에 저장되었습니다.")
         return screenshot_path
     except Exception as e:
         print(f"스크린샷 저장 실패: {e}")
@@ -101,18 +101,32 @@ def verify_faces(screenshot_path):
         print(f"얼굴 검증 중 오류 발생: {e}")
 
 
+# 학습된 사람 데이터 감지 함수
+def detect_trained_people(data):
+    """데이터에서 학습된 사람을 탐지"""
+    if not data:
+        return False  # 데이터가 없으면 False 반환
+
+    for item in data:
+        if item["ID"] > 0:  # 학습된 ID는 0보다 큼
+            return item  # 학습된 데이터를 반환
+    return False
+
+
 # 메인 로직
 def loop():
     try:
-        print("HuskyLens 실행 중... 얼굴 감지를 기다립니다!")
+        print("HuskyLens 실행 중... 학습된 얼굴 감지를 기다립니다!")
 
         while True:
             # HuskyLens로부터 데이터 요청 (폴링)
             current_data = husky.requestAll()  # 현재 데이터를 가져옴
 
-            # 학습된 얼굴 또는 아무 얼굴이든 감지 여부 확인
-            if current_data:
-                print("HuskyLens - 얼굴 데이터 감지")
+            # 학습된 얼굴 데이터 확인
+            trained_face = detect_trained_people(current_data)
+
+            if trained_face:
+                print(f"HuskyLens - 학습된 얼굴 감지: ID={trained_face['ID']}")
 
                 # 스크린샷 저장
                 screenshot_path = capture_screenshot()
@@ -123,8 +137,8 @@ def loop():
                 else:
                     print("스크린샷 저장 실패 - 동작 중지")
             else:
-                # 아무 얼굴도 감지되지 않으면 대기
-                print("Waiting for face detection...")
+                # 학습된 데이터가 없으면 대기
+                print("Waiting for trained face detection...")
 
             time.sleep(0.5)  # 반응 속도를 조절하기 위한 짧은 대기
     except KeyboardInterrupt:
