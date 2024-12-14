@@ -20,9 +20,9 @@ def setup():
 
     # HuskyLens I2C 연결
     try:
-        # HuskyLensLibrary("I2C", "", address=0x32)를 사용하여 객체 생성
-        husky = HuskyLensLibrary("I2C", '', address=0x32)
-        if husky.knock():  # HuskyLens 연결 테스트
+        # HuskyLensLibrary를 I2C로 초기화
+        husky = HuskyLensLibrary("I2C", '', address=0x32)  # 기본 I2C 주소: 0x32
+        if husky.knock():
             print("HuskyLens 연결 성공 (I2C)!")
         else:
             print("HuskyLens와의 연결에 실패했습니다.")
@@ -39,11 +39,14 @@ def setup():
     servo = GPIO.PWM(SERVO_PIN, 50)  # 서보 모터 50Hz PWM
     servo.start(0)
 
-    print("설정 완료!")
+    print("초기 설정 완료 - 시스템 준비!")
 
 
 # 서보 모터를 특정 각도로 회전시키는 함수
 def rotate_servo(angle):
+    """
+    서보 모터를 특정 각도로 회전
+    """
     duty_cycle = angle / 18.0 + 2
     servo.ChangeDutyCycle(duty_cycle)
     time.sleep(0.5)
@@ -52,46 +55,56 @@ def rotate_servo(angle):
 
 # 학습된 사람 데이터 감지 함수
 def detect_trained_people(data):
-    """데이터에서 학습된 사람을 탐지"""
+    """
+    HuskyLens 데이터에서 학습된 사람 객체(ID가 있는 데이터)를 감지
+    """
     if not data:
-        return False  # 데이터가 없으면 False 반환
+        return False  # HuskyLens에서 데이터가 없으면 False 반환
 
     for item in data:
-        print(f"검출된 데이터: ID={item.get('ID', 'N/A')}")  # 디버깅용 출력
-        if item["ID"] > 0:  # 학습된 ID는 0 이상
-            return item  # 학습된 데이터를 반환
+        # 현재 검출된 데이터 정보 출력 (디버깅용)
+        print(f"검출된 데이터: ID={item.get('ID', 'N/A')}")
+        if item["ID"] > 0:  # ID가 0보다 크면 학습된 데이터로 판정
+            return item  # 학습된 사람 데이터 반환
     return False
 
 
-# 학습된 얼굴 감지 및 처리
+# 메인 루프 실행
 def loop():
     try:
-        print("HuskyLens 실행 중... 학습된 얼굴 감지를 기다립니다!")
+        print("HuskyLens 실행 중... 학습된 얼굴 감지 대기!")
 
         while True:
             try:
-                # HuskyLens에서 모든 데이터를 요청
-                current_data = husky.requestAll()  # 현재 데이터를 가져옴
-                print(f"현재 데이터: {current_data}")  # 디버깅용 로그 출력
+                # HuskyLens 데이터 요청
+                current_data = husky.requestAll()
+                # 현재 데이터를 출력 (디버깅용)
+                print(f"현재 데이터: {current_data}")
             except Exception as e:
                 print(f"HuskyLens에서 데이터를 가져오는 데 실패했습니다: {e}")
                 time.sleep(1)
                 continue
 
-            # 학습된 얼굴 데이터 확인
+            # 학습된 얼굴 데이터 감지
             trained_face = detect_trained_people(current_data)
 
             if trained_face:
                 print(f"HuskyLens - 학습된 사람 감지: ID={trained_face['ID']}")
-                # 추가 처리 로직 (예: 서보 모터 동작)
-                rotate_servo(90)  # 서보 모터 동작
+                # 학습된 인물이 감지되었을 경우 서보 모터 동작 (예: 문 열기)
+                rotate_servo(90)  # 서보 모터 90도 회전
                 time.sleep(1)
-                rotate_servo(0)  # 초기 상태 복귀
+                rotate_servo(0)  # 서보 모터 0도로 복귀
             else:
                 print("HuskyLens 대기 중... 학습된 얼굴 감지 없음.")
 
-            time.sleep(0.5)  # 폴링 속도 조정
+            time.sleep(0.5)  # 폴링 간격
     except KeyboardInterrupt:
         print("프로그램 종료")
         servo.stop()  # PWM 정지
         GPIO.cleanup()  # GPIO 초기화
+
+
+# 실행
+if __name__ == "__main__":
+    setup()  # 초기 설정
+    loop()  # 메인 루프 실행
