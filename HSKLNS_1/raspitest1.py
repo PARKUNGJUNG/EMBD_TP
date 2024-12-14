@@ -57,10 +57,12 @@ def detect_face(data):
         return False
 
     for item in data:
-        if item["ID"] > 0:  # 학습된 얼굴이 감지되었을 때
-            print(f"학습된 얼굴 감지 - ID: {item['ID']}")
+        # 객체가 Block 또는 Arrow일 경우 ID 속성 검증
+        if hasattr(item, "ID") and item.ID > 0:  # Block 또는 Arrow 객체의 ID 확인
+            print(f"학습된 얼굴 감지 - ID: {item.ID}")
             return True  # 학습된 얼굴 있음
     return False
+
 
 
 # 스크린샷 캡처 기능 (HuskyLens 데이터를 Raspberry Pi에 저장)
