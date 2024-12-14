@@ -4,11 +4,9 @@ import serial
 import RPi.GPIO as GPIO
 from huskylib import HuskyLensLibrary
 from AI.detector import compare_faces, load_image
-import lcddriver  # I2C LCD 드라이버 라이브러리
 
 # 전역 변수
 husky = None  # HuskyLens 객체
-lcd = None  # LCD 객체
 PROJECT_DIR = os.getcwd()  # 현재 작업 디렉토리
 SCREENSHOT_DIR = os.path.join(PROJECT_DIR, "screenshots")  # 스크린샷 저장 폴더 경로
 KNOWN_FACES_DIR = os.path.join(PROJECT_DIR, "known_faces")  # 알려진 얼굴 폴더
@@ -18,7 +16,7 @@ SERVO_PIN = 11  # 서보 모터 GPIO 핀 번호
 
 # 초기 설정 함수
 def setup():
-    global husky, lcd
+    global husky
 
     # 스크린샷 저장 폴더 생성
     if not os.path.exists(SCREENSHOT_DIR):
@@ -52,10 +50,6 @@ def setup():
     servo = GPIO.PWM(SERVO_PIN, 50)  # 서보 모터 50Hz PWM
     servo.start(0)
 
-    # I2C LCD 설정
-    lcd = lcddriver.lcd()  # I2C LCD 객체 생성
-    lcd.lcd_clear()  # LCD 초기화
-    lcd.lcd_display_string("Ready", 1)  # LCD 첫 번째 줄에 출력
     print("설정 완료!")
 
 
@@ -92,30 +86,19 @@ def capture_screenshot():
 # 얼굴 검증 로직
 def verify_faces(screenshot_path):
     try:
-        # LCD에 인증 진행 메시지 출력
-        lcd.lcd_clear()
-        lcd.lcd_display_string("Authenticating...", 1)  # 인증 진행 알림
-
         # 저장된 얼굴(known_faces)과 캡처된 스크린샷 비교
         result = compare_faces(KNOWN_FACES_DIR, screenshot_path)
 
         # 결과 처리
         if result["match_found"]:
             print("검증 성공 - 학습된 얼굴과 일치합니다!")
-            lcd.lcd_clear()
-            lcd.lcd_display_string("Pass", 1)  # 검증 성공 메시지 출력
             rotate_servo(90)  # 서보 모터 동작
             time.sleep(1)
             rotate_servo(0)  # 초기 상태로 복귀
         else:
             print("검증 실패 - 학습된 얼굴과 일치하지 않습니다!")
-            lcd.lcd_clear()
-            lcd.lcd_display_string("Denied", 1)  # 검증 실패 메시지 출력
-            time.sleep(2)
     except Exception as e:
         print(f"얼굴 검증 중 오류 발생: {e}")
-        lcd.lcd_clear()
-        lcd.lcd_display_string("Error", 1)  # 오류 메시지 출력
 
 
 # 메인 로직
@@ -130,8 +113,6 @@ def loop():
             # 학습된 얼굴 또는 아무 얼굴이든 감지 여부 확인
             if current_data:
                 print("HuskyLens - 얼굴 데이터 감지")
-                lcd.lcd_clear()
-                lcd.lcd_display_string("Processing...", 1)  # 검증 시작 메시지
 
                 # 스크린샷 저장
                 screenshot_path = capture_screenshot()
@@ -143,15 +124,13 @@ def loop():
                     print("스크린샷 저장 실패 - 동작 중지")
             else:
                 # 아무 얼굴도 감지되지 않으면 대기
-                lcd.lcd_clear()
-                lcd.lcd_display_string("Waiting...", 1)  # 대기 중 메시지 출력
+                print("Waiting for face detection...")
 
             time.sleep(0.5)  # 반응 속도를 조절하기 위한 짧은 대기
     except KeyboardInterrupt:
         print("프로그램 종료")
         servo.stop()  # PWM 정지
         GPIO.cleanup()  # GPIO 초기화
-        lcd.lcd_clear()  # LCD 초기화
 
 
 # 실행
