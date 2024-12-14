@@ -4,7 +4,7 @@ import serial
 import RPi.GPIO as GPIO
 from huskylib import HuskyLensLibrary
 from AI.detector import compare_faces, load_image
-import I2C_LCD_driver  # I2C LCD 드라이버 라이브러리
+import lcddriver  # I2C LCD 드라이버 라이브러리
 
 # 전역 변수
 husky = None  # HuskyLens 객체
@@ -55,7 +55,7 @@ def setup():
     servo.start(0)
 
     # I2C LCD 설정
-    lcd = I2C_LCD_driver.lcd()  # I2C LCD 객체 생성
+    lcd = lcddriver.lcd()  # I2C LCD 객체 생성
     lcd.lcd_clear()  # LCD 초기화
     lcd.lcd_display_string("Ready", 1)  # LCD 첫 번째 줄에 출력
     print("설정 완료!")
@@ -94,9 +94,9 @@ def capture_screenshot():
 # 얼굴 검증 로직
 def verify_faces(screenshot_path):
     try:
-        global lcd
+        # LCD에 인증 진행 메시지 출력
         lcd.lcd_clear()
-        lcd.lcd_display_string("Authenticating...", 1)  # 1행에 "Authenticating..."
+        lcd.lcd_display_string("Authenticating...", 1)  # 인증 진행 알림
 
         # 저장된 얼굴(known_faces)과 캡처된 스크린샷 비교
         result = compare_faces(KNOWN_FACES_DIR, screenshot_path)
@@ -105,18 +105,19 @@ def verify_faces(screenshot_path):
         if result["match_found"]:
             print("검증 성공 - 학습된 얼굴과 일치합니다!")
             lcd.lcd_clear()
-            lcd.lcd_display_string("Pass", 1)  # 1행에 "Pass" 출력
+            lcd.lcd_display_string("Pass", 1)  # 검증 성공 메시지 출력
             rotate_servo(90)  # 서보 모터 동작
             time.sleep(1)
             rotate_servo(0)  # 초기 상태로 복귀
         else:
             print("검증 실패 - 학습된 얼굴과 일치하지 않습니다!")
             lcd.lcd_clear()
-            lcd.lcd_display_string("Denied", 1)  # 1행에 "Denied" 출력
+            lcd.lcd_display_string("Denied", 1)  # 검증 실패 메시지 출력
             time.sleep(2)
     except Exception as e:
         print(f"얼굴 검증 중 오류 발생: {e}")
-        lcd.lcd_display_string("Error", 1)  # 오류 발생 시
+        lcd.lcd_clear()
+        lcd.lcd_display_string("Error", 1)  # 오류 메시지 출력
 
 
 # 메인 로직
