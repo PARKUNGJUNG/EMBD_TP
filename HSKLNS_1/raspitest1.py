@@ -22,22 +22,13 @@ def setup():
 
     # HuskyLens UART 연결
     try:
-        husky_serial = serial.Serial(
-            port='/dev/serial0',  # Raspberry Pi의 기본 UART 포트
-            baudrate=9600,
-            timeout=1
-        )
-        husky = HuskyLensLibrary(husky_serial)
+        husky = HuskyLensLibrary("I2C", "", address=0x32)  # 여기에 들여쓰기를 추가
+        if husky.knock():
+            print("HuskyLens 연결 성공!")
+        else:
+            print("HuskyLens와의 연결에 실패했습니다.")
     except Exception as e:
-        print(f"UART 초기화 실패: {e}")
-        return
-
-    # HuskyLens 연결 확인
-    if husky.knock():
-        print("HuskyLens와 성공적으로 연결되었습니다!")
-    else:
-        print("HuskyLens와의 연결에 실패했습니다.")
-        husky = None
+        print(f"HuskyLens 연결 실패: {e}")
 
     # GPIO 핀 초기화
     GPIO.setmode(GPIO.BCM)
@@ -108,7 +99,8 @@ def detect_trained_people(data):
         return False  # 데이터가 없으면 False 반환
 
     for item in data:
-        if item["ID"] > 0:  # 학습된 ID는 0보다 큼
+        # item이 Block 객체이므로, Block 객체에서 ID를 추출
+        if hasattr(item, "getID") and item.getID() > 0:  # getID() 메서드 사용
             return item  # 학습된 데이터를 반환
     return False
 
