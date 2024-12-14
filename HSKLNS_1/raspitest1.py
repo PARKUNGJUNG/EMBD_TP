@@ -1,9 +1,9 @@
 import os
 import time
-import serial
 import RPi.GPIO as GPIO
 from huskylib import HuskyLensLibrary
 from PIL import Image
+from detector import recognize_faces
 
 # 전역 변수
 husky = None  # HuskyLens 객체
@@ -20,9 +20,8 @@ def setup():
     if not os.path.exists(SCREENSHOT_DIR):
         os.makedirs(SCREENSHOT_DIR)
 
-    # HuskyLens UART 연결
+    # HuskyLens I2C 연결
     try:
-        # I2C 방식으로 HuskyLens 라이브러리 초기화
         husky = HuskyLensLibrary("I2C", address=0x32)  # 디폴트 I2C 주소는 0x32
         if husky.knock():
             print("HuskyLens I2C 연결 성공!")
@@ -51,6 +50,19 @@ def rotate_servo(angle):
     servo.ChangeDutyCycle(0)
 
 
+# HuskyLens에서 학습된 얼굴인지 판별 (1차 검증)
+def detect_face(data):
+    """HuskyLens로부터 받은 데이터를 통해 학습된 사람을 탐지"""
+    if not data:
+        return False  # 데이터가 없으면 False 반환
+
+    for item in data:
+        print(f"검출된 데이터: ID={item.get('ID', 'N/A')}")  # 디버깅용 출력
+        if item["ID"] > 0:  # HuskyLens에서 학습된 ID는 1 이상일 것
+            return True  # 학습된 얼굴 검출
+    return False
+
+
 # 스크린샷 캡처 기능 (HuskyLens 데이터를 Raspberry Pi에 저장)
 def capture_screenshot():
     try:
@@ -75,79 +87,59 @@ def capture_screenshot():
         return None
 
 
-# 얼굴 검증 로직
-def verify_faces(screenshot_path):
+# 2차 얼굴 검증 (detector.py 활용)
+def secondary_face_verification(screenshot_path):
     try:
-        # 올바른 경로로 저장된 스크린샷 파일이 있는지 확인
-        if not os.path.exists(screenshot_path):
-            print("Error: 스크린샷 파일을 찾을 수 없습니다.")
-            return
+        # detector.py의 recognize_faces를 사용해 스크린샷 검증
+        print(f"2차 검증 시작: {screenshot_path}")
+        recognize_faces(image_location=screenshot_path, model="hog")
 
-        # 얼굴 검증 작업 (compare_faces 함수 사용 가정)
-        result = compare_faces(KNOWN_FACES_DIR, screenshot_path)
-
-        # 검증 결과 처리
-        if result["match_found"]:
-            print("검증 성공 - 학습된 얼굴과 일치합니다!")
-            rotate_servo(90)  # 서보 모터 동작
-            time.sleep(1)
-            rotate_servo(0)  # 초기 상태로 복귀
-        else:
-            print("검증 실패 - 학습된 얼굴과 일치하지 않습니다!")
+        # 2차 검증 성공 시 서보 모터 작동
+        print("2차 검증 성공: 얼굴이 확인되었습니다!")
+        rotate_servo(90)  # 서보 모터를 90도 회전
+        time.sleep(1)
+        rotate_servo(0)  # 초기 상태로 복귀
     except Exception as e:
-        print(f"verify_faces 오류 발생: {e}")
-
-
-# 학습된 사람 데이터 감지 함수
-def detect_trained_people(data):
-    """데이터에서 학습된 사람을 탐지"""
-    if not data:
-        return False  # 데이터가 없으면 False 반환
-
-    for item in data:
-        print(f"검출된 데이터: ID={item.get('ID', 'N/A')}")  # 디버깅용 출력
-        if item["ID"] > 0:  # 학습된 ID는 0 이상의 값 (HuskyLens 문서 참고)
-            return item  # 학습된 데이터를 반환
-    return False
+        print(f"2차 검증 중 오류 발생: {e}")
 
 
 # 메인 로직
 def loop():
     try:
-        print("HuskyLens 실행 중... 학습된 얼굴 감지를 기다립니다!")
+        print("HuskyLens 실행 중... 학습된 얼굴 감지를 대기합니다!")
 
         while True:
-            # HuskyLens로부터 데이터 요청 (폴링)
+            # HuskyLens 데이터 요청
+            current_data = None
             try:
-                current_data = husky.requestAll()  # 현재 데이터를 가져옴
-                print(f"현재 데이터: {current_data}")  # 디버깅용 로그 출력
+                current_data = husky.requestAll()
+                print(f"HuskyLens 데이터: {current_data}")  # 디버깅용
             except Exception as e:
-                print("HuskyLens에서 데이터를 가져오는 데 실패했습니다.")
+                print(f"HuskyLens 데이터 요청 실패: {e}")
                 time.sleep(1)
                 continue
 
-            # 학습된 얼굴 데이터 확인
-            trained_face = detect_trained_people(current_data)
-
-            if trained_face:
-                print(f"HuskyLens - 학습된 얼굴 감지: ID={trained_face['ID']}")
+            # 1차 검증 - 학습된 얼굴 검출 여부
+            if detect_face(current_data):
+                print("1차 검증 성공: 학습된 얼굴 감지!")
 
                 # 스크린샷 저장
                 screenshot_path = capture_screenshot()
-
                 if screenshot_path:
-                    print("스크린샷 저장 완료 - 얼굴 검증 중")
-                    verify_faces(screenshot_path)  # 저장된 얼굴로 검증
+                    print("스크린샷 저장 완료, 2차 검증을 진행합니다.")
+                    # 2차 검증 실행
+                    secondary_face_verification(screenshot_path)
                 else:
-                    print("스크린샷 저장 실패 - 동작 중지")
+                    print("스크린샷 저장 실패, 검증 중단")
             else:
-                # 학습된 데이터가 없으면 대기
                 print("Waiting for trained face detection...")
 
-            time.sleep(0.5)  # 폴링 간격 조정
+            # 반복 간격 조정
+            time.sleep(0.5)
+
     except KeyboardInterrupt:
         print("프로그램 종료")
-        servo.stop()  # PWM 정지
+        servo.stop()  # 서보 PWM 정지
         GPIO.cleanup()  # GPIO 초기화
 
 
