@@ -38,8 +38,6 @@ def setup():
     try:
         print("[INFO] HuskyLens Serial 연결 중...")
         husky = HuskyLensLibrary("SERIAL", comPort="/dev/ttyS0", speed=9600)
-        # * `/dev/ttyAMA0`는 Raspberry Pi의 디폴트 Serial 포트로, 기기에 따라 변경 필요!
-        # * baudrate는 HuskyLens 기본값(9600)으로 유지하되, 필요시 맞춤값 추가.
 
         if husky.knock():
             print("[INFO] HuskyLens Serial 연결 성공!")
@@ -56,7 +54,7 @@ def setup():
 
         # 서보 PWM 설정
         global servo
-        servo = GPIO.PWM(SERVO_PIN, 50)  # 서보 50Hz PWM 동작
+        servo = GPIO.PWM(SERVO_PIN, 50)  # 50Hz PWM 동작
         servo.start(0)
         print("[INFO] GPIO 및 서보 설정 성공")
     except Exception as e:
@@ -79,7 +77,7 @@ def rotate_servo(angle):
         fail_exit(f"서보 모터 제어 중 오류 발생: {e}")
 
 
-# HuskyLens 1차 검증 - 학습된 얼굴인지 확인
+# HuskyLens 학습된 얼굴 감지
 def detect_face(data):
     """HuskyLens의 감지 데이터를 분석하여 학습된 얼굴 확인"""
     print("[DEBUG] HuskyLens 데이터 분석 중...")
@@ -89,79 +87,64 @@ def detect_face(data):
 
     try:
         for item in data:
-            # 객체가 Block 또는 Arrow일 경우 ID 속성 검증
-            if hasattr(item, "ID") and item.ID > 0:  # Block 또는 Arrow 객체의 ID 확인
+            if hasattr(item, "ID") and item.ID > 0:  # 학습된 ID인지 확인
                 print(f"[INFO] 학습된 얼굴 감지 - ID: {item.ID}")
-                return True  # 학습된 얼굴 있음
+                return True
         print("[DEBUG] 학습된 얼굴 감지되지 않음")
         return False
     except Exception as e:
         fail_exit(f"HuskyLens 데이터 분석 중 오류 발생: {e}")
 
 
-# 스크린샷 캡처 기능 (HuskyLens 데이터를 Raspberry Pi에 저장)
+# HuskyLens 스크린샷 캡처
 def capture_screenshot():
     """HuskyLens SD 카드에 저장된 이미지를 Raspberry Pi로 복사"""
     try:
         print("[DEBUG] HuskyLens 스크린샷 저장 요청 중...")
-        # 스크린샷 저장 명령 재시도 로직 추가
+
         success = False
-        for _ in range(3):  # 3번까지 재시도
+        for _ in range(3):
             if husky.saveScreenshotToSDCard():
                 success = True
                 break
             print("[WARN] 스크린샷 저장 재시도 중...")
-            time.sleep(1)  # 재시도 간 대기
+            time.sleep(1)
 
         if not success:
             fail_exit("HuskyLens에서 스크린샷 저장에 실패했습니다.")
         print("[INFO] HuskyLens 스크린샷 SD 카드 저장 완료")
 
-        # 잠시 대기 후 파일 확인
-        time.sleep(2)
-
-        # SD 카드에 이미지 파일 확인
+        # SD 카드에 BMP 파일 확인
         if not os.path.exists(SD_CARD_PATH):
             fail_exit("SD 카드를 찾을 수 없습니다. 연결 상태를 확인하세요.")
 
-        files = [f for f in os.listdir(SD_CARD_PATH) if f.endswith(".jpg")]
+        files = [f for f in os.listdir(SD_CARD_PATH) if f.endswith(".bmp")]
         if not files:
-            fail_exit("SD 카드에 스크린샷 파일이 없습니다.")
+            fail_exit("SD 카드에서 BMP 형식의 스크린샷 파일을 찾을 수 없습니다.")
 
-        # 최신 파일 가져오기
-        print("[DEBUG] 최신 스크린샷 파일 검색 중...")
-        latest_file = max(files, key=lambda x: os.path.getctime(os.path.join(SD_CARD_PATH, x)))
-
-        # SD 카드에서 Raspberry Pi 저장소로 복사
+        latest_file = max(files, key=lambda x: int(x.split('.')[0]))
         source_file = os.path.join(SD_CARD_PATH, latest_file)
-        screenshot_filename = time.strftime("screenshot_%Y%m%d_%H%M%S.jpg")
+
+        screenshot_filename = time.strftime("screenshot_%Y%m%d_%H%M%S.bmp")
         destination_file = os.path.join(SCREENSHOT_DIR, screenshot_filename)
 
         try:
             shutil.copy(source_file, destination_file)
-            print(f"[INFO] 스크린샷 Raspberry Pi 저장 완료: {destination_file}")
+            print(f"[INFO] BMP 파일을 Raspberry Pi 로컬 저장소에 저장 완료: {destination_file}")
         except Exception as e:
-            fail_exit(f"파일 복사 실패: {e}")
-
-        # SD 카드 파일 삭제 (옵션)
-        try:
-            os.remove(source_file)
-            print(f"[INFO] SD 카드에서 원본 파일 삭제 완료: {source_file}")
-        except Exception as e:
-            print(f"[WARN] SD 카드 파일 삭제 실패: {e}")
+            fail_exit(f"BMP 파일 복사 중 오류 발생: {e}")
 
         return destination_file
     except Exception as e:
-        fail_exit(f"스크린샷 처리 중 오류 발생: {e}")
+        fail_exit(f"스크린샷 작업 중 오류 발생: {e}")
 
 
-
-# 2차 검증 (detector.py 활용)
+# 2차 검증 - detector.py 활용
 def secondary_face_verification(screenshot_path):
-    """detector.py의 recognize_faces를 사용하여 스크린샷 검증"""
+    """detector.py를 사용하여 추가 얼굴 검증 수행"""
     try:
         print(f"[INFO] 2차 검증 시작: {screenshot_path}")
-        recognize_faces(image_location=screenshot_path, model="hog")  # 2차 검증
+        recognize_faces(image_location=screenshot_path, model="hog")
         print("[INFO] 2차 검증 성공: 얼굴 인증 완료!")
         rotate_servo(90)  # 서보 모터 90도 회전
         time.sleep(1)
@@ -176,7 +159,6 @@ def loop():
         print("[INFO] HuskyLens 실행 중... 학습된 얼굴을 기다립니다.")
 
         while True:
-            # HuskyLens 데이터 요청
             try:
                 print("[DEBUG] HuskyLens 데이터 요청 중...")
                 current_data = husky.requestAll()
@@ -184,27 +166,25 @@ def loop():
             except Exception as e:
                 fail_exit(f"HuskyLens 데이터 요청 중 오류 발생: {e}")
 
-            # 1차 검증 - 학습된 얼굴 감지
+            # 1차 검증
             if detect_face(current_data):
                 print("[INFO] 1차 검증 성공: 학습된 얼굴 확인")
 
-                # 스크린샷 저장
+                # 스크린샷 저장 및 2차 검증
                 screenshot_path = capture_screenshot()
                 if screenshot_path:
-                    print("[INFO] 스크린샷 저장 완료, 2차 검증 진행 중...")
-                    secondary_face_verification(screenshot_path)  # 2차 검증
+                    secondary_face_verification(screenshot_path)
                 else:
                     print("[WARN] 스크린샷 저장 실패. 2차 검증 건너뜁니다.")
             else:
                 print("[INFO] 대기 중 - 학습된 얼굴 감지되지 않음.")
 
-            # 주기 조정
-            time.sleep(0.5)
+            time.sleep(0.5)  # 주기 조정
 
     except KeyboardInterrupt:
         print("[INFO] 프로그램 종료")
         servo.stop()
-        GPIO.cleanup()  # GPIO 초기화
+        GPIO.cleanup()
 
 
 # 실행
