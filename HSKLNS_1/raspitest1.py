@@ -1,5 +1,6 @@
 import os
 import time
+import shutil
 import RPi.GPIO as GPIO
 from huskylib import HuskyLensLibrary
 from detector import recognize_faces
@@ -8,6 +9,7 @@ from detector import recognize_faces
 husky = None  # HuskyLens 객체
 HOME_DIR = os.path.expanduser("~")  # 사용자 홈 디렉토리 경로
 SCREENSHOT_DIR = os.path.join(HOME_DIR, "HNUCE", "screenshot")  # 스크린샷 저장 경로
+SD_CARD_PATH = "/media/pi/SD_CARD"  # SD 카드가 마운트된 경로 (실제 환경에 맞게 수정)
 SERVO_PIN = 11  # 서보 모터 GPIO 핀 번호
 
 
@@ -64,29 +66,45 @@ def detect_face(data):
     return False
 
 
-
 # 스크린샷 캡처 기능 (HuskyLens 데이터를 Raspberry Pi에 저장)
 def capture_screenshot():
-    """현재 시점의 HuskyLens 이미지를 캡처하여 파일로 저장"""
+    """HuskyLens SD 카드에 저장된 이미지를 Raspberry Pi로 복사"""
     try:
-        # 이미지 데이터 수집
-        image_data = husky.captureImage()
-        if not image_data:
-            print("HuskyLens에서 이미지 데이터를 가져오지 못했습니다.")
+        # 1. HuskyLens에서 스크린샷 저장 (SD 카드에 저장)
+        if not husky.saveScreenshotToSDCard():
+            print("HuskyLens에서 스크린샷 저장에 실패했습니다.")
             return None
 
-        # 캡처된 이미지 저장 경로
+        print("HuskyLens 스크린샷이 SD 카드에 저장되었습니다.")
+
+        # 2. SD 카드의 파일 접근 - 최신 파일 가져오기
+        if not os.path.exists(SD_CARD_PATH):
+            print("SD 카드를 찾을 수 없습니다. 연결 상태를 확인하세요.")
+            return None
+
+        files = [f for f in os.listdir(SD_CARD_PATH) if f.endswith(".jpg")]
+        if not files:
+            print("SD 카드에 스크린샷 파일이 없습니다.")
+            return None
+
+        # 최신 파일 가져오기
+        latest_file = max(files, key=lambda x: os.path.getctime(os.path.join(SD_CARD_PATH, x)))
+
+        # 3. SD 카드에서 Raspberry Pi 저장소로 복사
+        source_file = os.path.join(SD_CARD_PATH, latest_file)
         screenshot_filename = time.strftime("screenshot_%Y%m%d_%H%M%S.jpg")
-        screenshot_path = os.path.join(SCREENSHOT_DIR, screenshot_filename)
+        destination_file = os.path.join(SCREENSHOT_DIR, screenshot_filename)
 
-        # 이미지 저장
-        with open(screenshot_path, "wb") as f:
-            f.write(image_data)
+        shutil.copy(source_file, destination_file)
+        print(f"스크린샷이 Raspberry Pi에 저장되었습니다: {destination_file}")
 
-        print(f"스크린샷 저장 완료: {screenshot_path}")
-        return screenshot_path
+        # 선택적으로 SD 카드의 파일 삭제
+        os.remove(source_file)
+        print(f"SD 카드에서 원본 파일 삭제됨: {source_file}")
+
+        return destination_file
     except Exception as e:
-        print(f"스크린샷 저장 실패: {e}")
+        print(f"스크린샷 저장 과정에서 오류 발생: {e}")
         return None
 
 
