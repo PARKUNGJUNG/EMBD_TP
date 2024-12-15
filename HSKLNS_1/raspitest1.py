@@ -2,6 +2,7 @@ import os
 import time
 import shutil
 import sys
+import cv2  # OpenCV for webcam integration
 import RPi.GPIO as GPIO
 from huskylib import HuskyLensLibrary
 from detector import recognize_faces
@@ -10,8 +11,8 @@ from detector import recognize_faces
 husky = None  # HuskyLens 객체
 HOME_DIR = os.path.expanduser("~")  # 사용자 홈 디렉토리 경로
 SCREENSHOT_DIR = os.path.join(HOME_DIR, "HNUCE", "screenshot")  # 스크린샷 저장 경로
-SD_CARD_PATH = "/media/pi/SD_CARD"  # SD 카드가 마운트된 경로 (실환경에 맞게 수정)
 SERVO_PIN = 11  # 서보 모터 GPIO 핀 번호
+WEBCAM_SAVE_PATH = os.path.join(SCREENSHOT_DIR, "webcam_snapshot.jpg")  # 웹캠 캡처 이미지 저장 경로
 
 
 # 오류 메시지 출력 후 종료 함수
@@ -96,55 +97,37 @@ def detect_face(data):
         fail_exit(f"HuskyLens 데이터 분석 중 오류 발생: {e}")
 
 
-# HuskyLens 스크린샷 캡처
-def capture_screenshot():
-    """HuskyLens SD 카드에 저장된 이미지를 Raspberry Pi로 복사"""
+# USB 웹캠으로 이미지 캡처
+def capture_webcam_image(output_path=WEBCAM_SAVE_PATH):
+    """USB 웹캠에서 실시간 이미지 캡처"""
     try:
-        print("[DEBUG] HuskyLens 스크린샷 저장 요청 중...")
+        print("[INFO] USB 웹캠으로 이미지 캡처 시도 중...")
+        cam = cv2.VideoCapture(0)  # 0번 장치를 통해 웹캠 접근
+        if not cam.isOpened():
+            fail_exit("웹캠에 접근할 수 없습니다. 연결을 확인하세요.")
 
-        success = False
-        for _ in range(3):
-            if husky.saveScreenshotToSDCard():
-                success = True
-                break
-            print("[WARN] 스크린샷 저장 재시도 중...")
-            time.sleep(1)
+        ret, frame = cam.read()
+        if ret:
+            cv2.imwrite(output_path, frame)
+            print(f"[INFO] USB 웹캠 이미지 캡처 완료: {output_path}")
+        else:
+            fail_exit("웹캠에서 이미지를 캡처하는 데 실패했습니다.")
 
-        if not success:
-            fail_exit("HuskyLens에서 스크린샷 저장에 실패했습니다.")
-        print("[INFO] HuskyLens 스크린샷 SD 카드 저장 완료")
-
-        # SD 카드에 BMP 파일 확인
-        if not os.path.exists(SD_CARD_PATH):
-            fail_exit("SD 카드를 찾을 수 없습니다. 연결 상태를 확인하세요.")
-
-        files = [f for f in os.listdir(SD_CARD_PATH) if f.endswith(".bmp")]
-        if not files:
-            fail_exit("SD 카드에서 BMP 형식의 스크린샷 파일을 찾을 수 없습니다.")
-
-        latest_file = max(files, key=lambda x: int(x.split('.')[0]))
-        source_file = os.path.join(SD_CARD_PATH, latest_file)
-
-        screenshot_filename = time.strftime("screenshot_%Y%m%d_%H%M%S.bmp")
-        destination_file = os.path.join(SCREENSHOT_DIR, screenshot_filename)
-
-        try:
-            shutil.copy(source_file, destination_file)
-            print(f"[INFO] BMP 파일을 Raspberry Pi 로컬 저장소에 저장 완료: {destination_file}")
-        except Exception as e:
-            fail_exit(f"BMP 파일 복사 중 오류 발생: {e}")
-
-        return destination_file
+        cam.release()
+        cv2.destroyAllWindows()
+        return output_path
     except Exception as e:
-        fail_exit(f"스크린샷 작업 중 오류 발생: {e}")
+        fail_exit(f"웹캠 이미지 캡처 중 오류 발생: {e}")
 
 
-# 2차 검증 - detector.py 활용
-def secondary_face_verification(screenshot_path):
-    """detector.py를 사용하여 추가 얼굴 검증 수행"""
+# 2차 검증 - 웹캠 이미지 기반
+def secondary_face_verification_with_webcam():
+    """웹캠 캡처 이미지를 사용하여 추가 얼굴 검증 수행"""
     try:
-        print(f"[INFO] 2차 검증 시작: {screenshot_path}")
-        recognize_faces(image_location=screenshot_path, model="hog")
+        # 웹캠 이미지 캡처
+        image_path = capture_webcam_image()
+        print("[INFO] 2차 검증 시작")
+        recognize_faces(image_location=image_path, model="hog")
         print("[INFO] 2차 검증 성공: 얼굴 인증 완료!")
         rotate_servo(90)  # 서보 모터 90도 회전
         time.sleep(1)
@@ -166,16 +149,12 @@ def loop():
             except Exception as e:
                 fail_exit(f"HuskyLens 데이터 요청 중 오류 발생: {e}")
 
-            # 1차 검증
+            # 1차 검증: HuskyLens를 통해 학습된 얼굴 감지
             if detect_face(current_data):
                 print("[INFO] 1차 검증 성공: 학습된 얼굴 확인")
 
-                # 스크린샷 저장 및 2차 검증
-                screenshot_path = capture_screenshot()
-                if screenshot_path:
-                    secondary_face_verification(screenshot_path)
-                else:
-                    print("[WARN] 스크린샷 저장 실패. 2차 검증 건너뜁니다.")
+                # 2차 검증: USB 웹캠 이미지를 기반으로 수행
+                secondary_face_verification_with_webcam()
             else:
                 print("[INFO] 대기 중 - 학습된 얼굴 감지되지 않음.")
 
