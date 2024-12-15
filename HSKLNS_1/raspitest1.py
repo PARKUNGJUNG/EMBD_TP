@@ -37,7 +37,7 @@ def setup():
     # HuskyLens Serial 연결
     try:
         print("[INFO] HuskyLens Serial 연결 중...")
-        husky = HuskyLensLibrary("SERIAL", comPort="/dev/ttyAMA0", speed=9600)
+        husky = HuskyLensLibrary("SERIAL", comPort="/dev/ttyS0", speed=9600)
         # * `/dev/ttyAMA0`는 Raspberry Pi의 디폴트 Serial 포트로, 기기에 따라 변경 필요!
         # * baudrate는 HuskyLens 기본값(9600)으로 유지하되, 필요시 맞춤값 추가.
 
@@ -104,12 +104,23 @@ def capture_screenshot():
     """HuskyLens SD 카드에 저장된 이미지를 Raspberry Pi로 복사"""
     try:
         print("[DEBUG] HuskyLens 스크린샷 저장 요청 중...")
-        if not husky.saveScreenshotToSDCard():
-            fail_exit("HuskyLens에서 스크린샷 저장에 실패했습니다.")
+        # 스크린샷 저장 명령 재시도 로직 추가
+        success = False
+        for _ in range(3):  # 3번까지 재시도
+            if husky.saveScreenshotToSDCard():
+                success = True
+                break
+            print("[WARN] 스크린샷 저장 재시도 중...")
+            time.sleep(1)  # 재시도 간 대기
 
+        if not success:
+            fail_exit("HuskyLens에서 스크린샷 저장에 실패했습니다.")
         print("[INFO] HuskyLens 스크린샷 SD 카드 저장 완료")
 
-        # SD 카드에 이미지 파일 있는지 확인
+        # 잠시 대기 후 파일 확인
+        time.sleep(2)
+
+        # SD 카드에 이미지 파일 확인
         if not os.path.exists(SD_CARD_PATH):
             fail_exit("SD 카드를 찾을 수 없습니다. 연결 상태를 확인하세요.")
 
@@ -126,16 +137,23 @@ def capture_screenshot():
         screenshot_filename = time.strftime("screenshot_%Y%m%d_%H%M%S.jpg")
         destination_file = os.path.join(SCREENSHOT_DIR, screenshot_filename)
 
-        shutil.copy(source_file, destination_file)
-        print(f"[INFO] 스크린샷 Raspberry Pi 저장 완료: {destination_file}")
+        try:
+            shutil.copy(source_file, destination_file)
+            print(f"[INFO] 스크린샷 Raspberry Pi 저장 완료: {destination_file}")
+        except Exception as e:
+            fail_exit(f"파일 복사 실패: {e}")
 
-        # SD 카드에서 원본 파일 삭제 (선택 사항)
-        os.remove(source_file)
-        print(f"[INFO] SD 카드에서 원본 파일 삭제 완료: {source_file}")
+        # SD 카드 파일 삭제 (옵션)
+        try:
+            os.remove(source_file)
+            print(f"[INFO] SD 카드에서 원본 파일 삭제 완료: {source_file}")
+        except Exception as e:
+            print(f"[WARN] SD 카드 파일 삭제 실패: {e}")
 
         return destination_file
     except Exception as e:
         fail_exit(f"스크린샷 처리 중 오류 발생: {e}")
+
 
 
 # 2차 검증 (detector.py 활용)
