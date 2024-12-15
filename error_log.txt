@@ -2,4 +2,14 @@
 [INFO] 1차 검증 성공: 학습된 얼굴 확인
 [DEBUG] HuskyLens 스크린샷 저장 요청 중...
 Read response error, please try again
+[WARN] 스크린샷 저장 재시도 중...
+Read response error, please try again
+[WARN] 스크린샷 저장 재시도 중...
+Read response error, please try again
+[WARN] 스크린샷 저장 재시도 중...
 [ERROR] HuskyLens에서 스크린샷 저장에 실패했습니다.
+
+
+------------------
+(program exited with code: 1)
+Press return to continue
