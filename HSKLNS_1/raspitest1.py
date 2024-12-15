@@ -34,14 +34,17 @@ def setup():
     except Exception as e:
         fail_exit(f"스크린샷 저장 디렉토리 생성 실패: {e}")
 
-    # HuskyLens I2C 연결
+    # HuskyLens Serial 연결
     try:
-        print("[INFO] HuskyLens I2C 연결 중...")
-        husky = HuskyLensLibrary("I2C", address=0x32)  # 디폴트 I2C 주소는 0x32
+        print("[INFO] HuskyLens Serial 연결 중...")
+        husky = HuskyLensLibrary("SERIAL", comPort="/dev/ttyAMA0", speed=9600)
+        # * `/dev/ttyAMA0`는 Raspberry Pi의 디폴트 Serial 포트로, 기기에 따라 변경 필요!
+        # * baudrate는 HuskyLens 기본값(9600)으로 유지하되, 필요시 맞춤값 추가.
+
         if husky.knock():
-            print("[INFO] HuskyLens I2C 연결 성공!")
+            print("[INFO] HuskyLens Serial 연결 성공!")
         else:
-            fail_exit("HuskyLens 연결 실패: I2C 주소를 확인해주세요.")
+            fail_exit("HuskyLens 연결 실패: Serial 설정을 확인해주세요.")
     except Exception as e:
         fail_exit(f"HuskyLens 연결 중 오류 발생: {e}")
 
