@@ -16,7 +16,7 @@ HOME_DIR = os.path.expanduser("~")  # 사용자 홈 디렉토리 경로
 SCREENSHOT_DIR = os.path.join(HOME_DIR, "HNUCE", "screenshot")  # 스크린샷 저장 경로
 SERVO_PIN = 11  # 서보 모터 GPIO 핀 번호
 WEBCAM_SAVE_PATH = os.path.join(SCREENSHOT_DIR, "webcam_snapshot.jpg")  # 웹캠 캡처 이미지 저장 경로
-ENCODINGS_PATH = os.path.join(HOME_DIR, "HNUCE", "encodings.pkl")  # 얼굴 인코딩 데이터 경로
+ENCODINGS_PATH = os.path.join(HOME_DIR, "output", "encodings.pkl")  # 얼굴 인코딩 데이터 경로
 
 
 # 오류 메시지 출력 후 종료 함수
@@ -128,20 +128,25 @@ def recognize_faces_with_result(image_location, model="hog"):
         return "Unknown"
 
 
-# 2차 검증 - 얼굴 인식 수행
+# 2차 검증 - 얼굴 인식 수행 및 서보 작동 추가
 def secondary_face_verification_with_webcam():
     """웹캠 캡처 이미지를 사용하여 추가 얼굴 검증 수행"""
-    image_path = capture_webcam_image()
+    image_path = capture_webcam_image()  # 웹캠으로 사진 촬영
     print("[INFO] 2차 인증 시작...")
-    result = recognize_faces_with_result(image_location=image_path)
+
+    result = recognize_faces_with_result(image_location=image_path)  # 얼굴 인식
     if result == "Unknown" or result is None:
         print("[ERROR] 2차 인증 실패: 얼굴이 인식되지 않거나 권한이 없는 사용자입니다.")
-        return False
+        return False  # 인증 실패
+
     print(f"[INFO] 2차 인증 성공: 얼굴 인증 완료! (사용자: {result})")
-    rotate_servo(90)  # 서보 모터 작동
-    time.sleep(1)
-    rotate_servo(0)
-    return True
+
+    # 서보 모터 회전
+    rotate_servo(90)  # 문 열기 상태 (90도 회전)
+    time.sleep(5)  # 5초간 문 열기 상태 유지
+    rotate_servo(0)  # 문 닫기 상태 (0도 회전)
+
+    return True  # 인증 성공
 
 
 # 메인 루프
@@ -149,25 +154,33 @@ def loop():
     print("[INFO] 메인 루프 실행 중...")
     try:
         while True:
-            # HuskyLens에서 학습된 얼굴 요청
+            # HuskyLens에서 얼굴 데이터 요청
             print("[DEBUG] HuskyLens 데이터 요청 중...")
             husky_data = husky.requestAll()
+
+            # 1차 인증 (HuskyLens 학습된 얼굴 감지)
             if detect_face(husky_data):
                 print("[INFO] 1차 인증: 학습된 얼굴 확인됨.")
+
+                # 2차 인증 단계: USB 웹캠 얼굴 인식
                 if not secondary_face_verification_with_webcam():
-                    print("[INFO] 2차 인증 실패: 1차 인증으로 복귀.")
-                    continue  # 1차 인증 루프로 복귀
-                print("[INFO] 인증 완료: 정상 작동 중.")  # 2차 인증 성공
+                    print("[INFO] 2차 인증 실패: 1차 인증 단계로 복귀.")
+                    continue  # 실패 시 1차 인증 루프 복귀
+
+                print("[INFO] 2차 인증 성공: 정상적으로 작업 완료.")
+                # 성공 이후 루프는 계속 실행
             else:
-                print("[INFO] 학습된 얼굴 없음. 대기 중...")
-            time.sleep(0.5)  # 대기 시간 설정
+                print("[INFO] 학습된 얼굴 없음 - 대기 중...")
+
+            time.sleep(0.5)  # 각 검증 루프 간 짧은 대기
     except KeyboardInterrupt:
+        # 사용자 인터럽트 시 프로그램 안전 종료
         print("[INFO] 프로그램 종료 중...")
         GPIO.cleanup()
         sys.exit(0)
 
 
-# 프로그램 실행
+# 프로그램 실행 진입점
 if __name__ == "__main__":
     setup()
     loop()
