@@ -14,7 +14,7 @@ from face_recognition import face_locations, face_encodings, compare_faces
 husky = None  # HuskyLens 객체
 HOME_DIR = os.path.expanduser("~")  # 사용자 홈 디렉토리 경로
 SCREENSHOT_DIR = os.path.join(HOME_DIR, "HNUCE", "screenshot")  # 스크린샷 저장 경로
-SERVO_PIN = 11  # 서보 모터 GPIO 핀 번호
+SERVO_PIN = 17  # 서보 모터 GPIO 핀 번호
 WEBCAM_SAVE_PATH = os.path.join(SCREENSHOT_DIR, "webcam_snapshot.jpg")  # 웹캠 캡처 이미지 저장 경로
 ENCODINGS_PATH = os.path.join(HOME_DIR, "output", "encodings.pkl")  # 얼굴 인코딩 데이터 경로
 
