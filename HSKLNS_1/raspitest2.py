@@ -107,14 +107,14 @@ def recognize_faces_with_result(image_location, model="hog"):
 def secondary_face_verification_with_webcam():
     """웹캠 캡처 이미지를 사용하여 추가 얼굴 검증 수행"""
     image_path = capture_webcam_image()  # 웹캠으로 사진 촬영
-    print("[INFO] 2차 인증 시작...")
+    print("[INFO] 사용자 인증 시작...")
 
     result = recognize_faces_with_result(image_location=image_path)  # 얼굴 인식
     if result == "Unknown" or result is None:
-        print("[ERROR] 2차 인증 실패: 얼굴이 인식되지 않거나 권한이 없는 사용자입니다.")
+        print("[ERROR] 사용자 인증 실패: 얼굴이 인식되지 않거나 권한이 없는 사용자입니다.")
         return False  # 인증 실패
 
-    print(f"[INFO] 2차 인증 성공: 얼굴 인증 완료! (사용자: {result})")
+    print(f"[INFO] 사용자 인증 성공: 얼굴 인증 완료! (사용자: {result})")
 
     # 서보 모터 회전
     rotate_servo(80)  # 문 열기 상태 (90도 회전)
@@ -132,7 +132,7 @@ def loop():
 
             # 1차 인증 (HuskyLens 학습된 얼굴 감지)
             if secondary_face_verification_with_webcam():
-                print("[INFO] 1차 인증: 학습된 얼굴 확인됨.")
+                print("[INFO] 사용자 인증: 학습된 얼굴 확인됨.")
 
             else:
                 print("[INFO] 학습된 얼굴 없음 - 대기 중...")
