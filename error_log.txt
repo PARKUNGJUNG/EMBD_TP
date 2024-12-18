@@ -1,15 +1,35 @@
-[INFO] GPIO 및 서보 설정 중...
 Traceback (most recent call last):
-  File "/home/HNUCE/raspitest1.py", line 185, in <module>
-    setup()
-  File "/home/HNUCE/raspitest1.py", line 51, in setup
-    GPIO.setup(SERVO_PIN, GPIO.OUT)
-  File "/usr/lib/python3/dist-packages/RPi/GPIO/__init__.py", line 704, in setup
-    initial = _check(lgpio.gpio_read(_chip, gpio))
-                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/lib/python3/dist-packages/lgpio.py", line 903, in gpio_read
-    return _u2i(_lgpio._gpio_read(handle&0xffff, gpio))
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/usr/lib/python3/dist-packages/lgpio.py", line 458, in _u2i
-    raise error(error_text(v))
-lgpio.error: 'GPIO not allocated'
+  File "/usr/lib/python3/dist-packages/PIL/Image.py", line 3231, in open
+    fp.seek(0)
+    ^^^^^^^
+AttributeError: 'numpy.ndarray' object has no attribute 'seek'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/HNUCE/raspitest2.py", line 105, in <module>
+    main_loop()
+  File "/home/HNUCE/raspitest2.py", line 87, in main_loop
+    if authenticate_user():
+       ^^^^^^^^^^^^^^^^^^^
+  File "/home/HNUCE/raspitest2.py", line 70, in authenticate_user
+    recognized_faces = recognize_faces(test_image, ENCODINGS_PATH)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/HNUCE/detector.py", line 59, in recognize_faces
+    input_image = load_image(image_location)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/HNUCE/detector.py", line 32, in load_image
+    image = Image.open(file_path)
+            ^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3/dist-packages/PIL/Image.py", line 3233, in open
+    fp = io.BytesIO(fp.read())
+                    ^^^^^^^
+AttributeError: 'numpy.ndarray' object has no attribute 'read'. Did you mean: 'real'?
+Exception ignored in: <function PWM.__del__ at 0x7f8bd9b420>
+Traceback (most recent call last):
+  File "/usr/lib/python3/dist-packages/RPi/GPIO/__init__.py", line 179, in __del__
+  File "/usr/lib/python3/dist-packages/RPi/GPIO/__init__.py", line 202, in stop
+  File "/usr/lib/python3/dist-packages/lgpio.py", line 1084, in tx_pwm
+TypeError: unsupported operand type(s) for &: 'NoneType' and 'int'
+
+
