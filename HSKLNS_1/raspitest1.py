@@ -1,3 +1,7 @@
+#원래 허스키렌즈 + 웹캠을 사용하려고 만든 프로그램
+#도중에 허스키렌즈의 파손으로 인하여 raspitest2.py 사용
+
+
 import os
 import time
 import sys
