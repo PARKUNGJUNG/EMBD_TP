@@ -1,3 +1,5 @@
+#라즈베리파이의 실행 환경과 PC의 IDE간의 파일교환이 번거로워서 github를 중개로 하여 에러 코드를 불러오기 위한 텍스트 파일
+
 Traceback (most recent call last):
   File "/usr/lib/python3/dist-packages/PIL/Image.py", line 3231, in open
     fp.seek(0)
